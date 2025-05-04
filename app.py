@@ -112,4 +112,4 @@ def download_csv():
     return send_file("predictions.csv", as_attachment=True)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
