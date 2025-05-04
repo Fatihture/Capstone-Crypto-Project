@@ -1,8 +1,25 @@
 import requests
 import pandas as pd
-import time  # ⬅️ Cache için eklendi
+import time
+
+# 🎯 fetch_data için cache ayarları
+_data_cache = {}
+_data_fetch_times = {}
+_DATA_CACHE_DURATION = 300  # 5 dakika (saniye)
 
 def fetch_data(coin_id="bitcoin", days="365"):
+    global _data_cache, _data_fetch_times
+
+    now = time.time()
+    cache_key = f"{coin_id}_{days}"
+
+    # Cache kontrolü
+    if (
+        cache_key in _data_cache and
+        now - _data_fetch_times.get(cache_key, 0) < _DATA_CACHE_DURATION
+    ):
+        return _data_cache[cache_key]
+
     url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
     params = {
         "vs_currency": "usd",
@@ -26,14 +43,19 @@ def fetch_data(coin_id="bitcoin", days="365"):
         "market_cap": [x[1] for x in market_caps],
     })
     df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
+
+    # Cache güncelle
+    _data_cache[cache_key] = df
+    _data_fetch_times[cache_key] = now
+
     return df
 
-# 🔄 Cache ayarları
+
+# 🔄 Güncel fiyatlar (önceden verdiğimiz cache’li versiyon)
 _cached_prices = {}
 _last_fetch_time = 0
 _CACHE_DURATION = 600  # saniye (10 dakika)
 
-# 🔄 Güncel fiyatları getir (cache'li)
 def fetch_current_prices(coin_ids):
     global _cached_prices, _last_fetch_time
 
@@ -57,7 +79,6 @@ def fetch_current_prices(coin_ids):
             if price is not None:
                 prices[coin_id] = price
 
-        # Cache güncelle
         _cached_prices = prices
         _last_fetch_time = now
 
