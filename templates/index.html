@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Crypto Price Prediction</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f3ef;
+            color: #0d1b2a;
+        }
+        .container {
+            max-width: 900px;
+        }
+        .card {
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            margin-top: 20px;
+            box-shadow: 0 0 10px rgba(13, 27, 42, 0.05);
+        }
+        .list-group-item {
+            background-color: #ffffff;
+            color: #0d1b2a;
+            border-color: #ececec;
+        }
+        #graph {
+            margin-top: 30px;
+        }
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 60px;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .form-label {
+            color: #0d1b2a;
+            font-weight: 500;
+        }
+        .form-control, .form-select {
+            background-color: #fffdf9;
+            color: #0d1b2a;
+            border: 1px solid #ced4da;
+        }
+        .form-control:focus, .form-select:focus {
+            box-shadow: 0 0 5px #f4c430;
+            border-color: #f4c430;
+        }
+        .navbar-dark {
+            background-color: #0d1b2a !important;
+        }
+        .navbar-brand {
+            color: #f4c430 !important;
+            font-weight: bold;
+        }
+        .btn-primary {
+            background-color: #f4c430;
+            border: none;
+            color: #0d1b2a;
+            font-weight: bold;
+        }
+        .btn-primary:hover {
+            background-color: #e0b020;
+        }
+        .btn-success {
+            background-color: #0d1b2a;
+            border: none;
+            color: #ffffff;
+        }
+        .btn-success:hover {
+            background-color: #1b2e49;
+        }
+        .alert-info {
+            background-color: #fff9e5;
+            color: #0d1b2a;
+            font-weight: 500;
+            border: 1px solid #f4c430;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark mb-4">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                🪙 Crypto Predictor
+            </span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <form method="POST" class="card p-4 shadow-sm">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="coin" class="form-label">Select Coin:</label>
+                    <select class="form-select" name="coin" id="coin">
+                        {% for key, name in coins.items() %}
+                            <option value="{{ key }}" {% if selected_coin == key %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="days" class="form-label">Prediction Days:</label>
+                    <input type="text" class="form-control" name="days" id="days" value="{{ future_days }}">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">🔮 Predict</button>
+        </form>
+
+        {% if rmse_score %}
+            <div class="alert alert-info text-center mt-4">
+                📉 RMSE: {{ rmse_score }} USD
+            </div>
+        {% endif %}
+
+        {% if prediction %}
+            {% if prediction is string %}
+                <div class="alert alert-danger text-center mt-4">{{ prediction }}</div>
+            {% else %}
+                <div class="card mt-4 p-3">
+                    <h5 class="card-title text-primary">
+                        {{ coins[selected_coin] }} - {{ future_days }} Day Forecast
+                    </h5>
+                    <ul class="list-group list-group-flush">
+                        {% for date, price in prediction %}
+                            <li class="list-group-item">📅 {{ date }} → 💵 {{ "%.2f"|format(price) }} USD</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% if csv_ready %}
+                    <div class="text-center mt-3">
+                        <a href="/download" class="btn btn-success">⬇️ Download Predictions (CSV)</a>
+                    </div>
+                {% endif %}
+            {% endif %}
+        {% endif %}
+
+        {% if graphJSON %}
+            <div id="graph"></div>
+            <script>
+                var plot_data = {{ graphJSON | safe }};
+                Plotly.newPlot('graph', plot_data.data, plot_data.layout, {responsive: true});
+            </script>
+        {% endif %}
+
+        {% if current_prices %}
+          <div class="card mt-5 p-3">
+             <h5 class="card-title text-primary">🪙 Current Prices</h5>
+               <ul class="list-group list-group-flush">
+                  {% for key, price in current_prices.items() %}
+                     <li class="list-group-item d-flex justify-content-between">
+                         {{ coins[key] }}:
+                            <span><strong>${{ "%.2f"|format(price) }}</strong></span>
+                       </li>
+                  {% endfor %}
+             </ul>
+          </div>
+        {% endif %}
+
+    </div>
+
+    <footer>
+        &copy; 2025 Fatih Türe - Crypto Prediction Project
+    </footer>
+</body>
+</html>
