@@ -3,10 +3,10 @@ import pandas as pd
 import time
 from datetime import datetime
 
-# 🔐 CryptoCompare API KEY
+# CryptoCompare API key
 CRYPTOCOMPARE_API_KEY = "94d76d5d1459a03c3ddaee417d0cce037a65cf2bc9595c5d1faa6646b8056ef6"
 
-# 🪙 Coin eşleştirmeleri (senin arayüz ID'lerine göre)
+# Coin eşleşmeleri
 cc_symbols = {
     "bitcoin": "BTC",
     "ethereum": "ETH",
@@ -20,17 +20,17 @@ cc_symbols = {
     "avalanche-2": "AVAX"
 }
 
-# 🧠 Geçmiş fiyat cache
+# Geçmiş veri cache
 _data_cache = {}
 _data_fetch_times = {}
-_DATA_CACHE_DURATION = 300  # 5 dakika
+_DATA_CACHE_DURATION = 300  # saniye
 
-# 🧠 Güncel fiyat cache
+# Güncel fiyat cache
 _cached_prices = {}
 _last_fetch_time = 0
-_CACHE_DURATION = 600  # 10 dakika
+_CACHE_DURATION = 600  # saniye
 
-# 🔁 Geçmiş fiyatları getir (grafik + model için)
+# 🔁 Geçmiş fiyat verisi (tahmin ve grafik için)
 def fetch_data(coin_id="bitcoin", days="365"):
     global _data_cache, _data_fetch_times
 
@@ -60,18 +60,18 @@ def fetch_data(coin_id="bitcoin", days="365"):
         raise ValueError(f"Invalid API response: {data}")
 
     raw = data["Data"]["Data"]
-    df = pd.DataFrame(raw)
-    df["timestamp"] = pd.to_datetime(df["time"], unit="s")
-    df.rename(columns={"close": "price"}, inplace=True)
-    df["market_cap"] = 0  # Placeholder (API sağlamıyor)
-    df = df[["timestamp", "price", "volumeto", "market_cap"]]
-    df.rename(columns={"volumeto": "volume"}, inplace=True)
+
+    df = pd.DataFrame([{
+         "timestamp": pd.to_datetime(item["time"], unit="s"),
+         "price": float(item["close"])
+    } for item in raw if item.get("close") is not None and float(item["close"]) > 0])
+
 
     _data_cache[cache_key] = df
     _data_fetch_times[cache_key] = now
     return df
 
-# 🔁 Güncel fiyatları getir (sayfa altındaki kutu için)
+# 🔁 Güncel fiyat verisi (sayfanın altı için)
 def fetch_current_prices(coin_ids):
     global _cached_prices, _last_fetch_time
 
@@ -79,8 +79,8 @@ def fetch_current_prices(coin_ids):
     if now - _last_fetch_time < _CACHE_DURATION and _cached_prices:
         return _cached_prices
 
-    symbols = [cc_symbols[cid] for cid in coin_ids if cid in cc_symbols]
     prices = {}
+    symbols = [cc_symbols[cid] for cid in coin_ids if cid in cc_symbols]
 
     for symbol, coin_id in zip(symbols, coin_ids):
         url = f"https://min-api.cryptocompare.com/data/price"

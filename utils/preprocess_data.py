@@ -1,10 +1,9 @@
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
-def preprocess_data(df, window_size=30):
-    # Sadece fiyat sütunu ile çalış
+def preprocess_data(df, window_size=10):  # ⬅️ 30 gün veriye göre 10 günlük pencere
     scaler = MinMaxScaler()
-    scaled = scaler.fit_transform(df[["price"]])  # shape: (n_samples, 1)
+    scaled = scaler.fit_transform(df[["price"]])  # (n_samples, 1)
 
     X, y = [], []
 

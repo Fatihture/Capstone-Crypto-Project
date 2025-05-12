@@ -24,9 +24,6 @@
             color: #0d1b2a;
             border-color: #ececec;
         }
-        #graph {
-            margin-top: 30px;
-        }
         footer {
             text-align: center;
             padding: 20px;
@@ -135,28 +132,49 @@
             {% endif %}
         {% endif %}
 
-        {% if graphJSON %}
-            <div id="graph"></div>
+        {% if past_prices %}
+            <div class="card mt-5 p-3">
+                <h5 class="card-title text-primary">📊 Last 30 Days Historical Prices</h5>
+                <table class="table table-sm table-striped mt-2">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Closing Price (USD)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for date, price in past_prices %}
+                            <tr>
+                                <td>{{ date.strftime('%Y-%m-%d') }}</td>
+                                <td>${{ "%.2f"|format(price) }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+
+        {% if graphJSON_pred %}
+            <div id="prediction_graph" class="mt-5"></div>
             <script>
-                var plot_data = {{ graphJSON | safe }};
-                Plotly.newPlot('graph', plot_data.data, plot_data.layout, {responsive: true});
+                var pred_plot = {{ graphJSON_pred | safe }};
+                Plotly.newPlot('prediction_graph', pred_plot.data, pred_plot.layout, {responsive: true});
             </script>
         {% endif %}
 
         {% if current_prices %}
-          <div class="card mt-5 p-3">
-             <h5 class="card-title text-primary">🪙 Current Prices</h5>
-               <ul class="list-group list-group-flush">
-                  {% for key, price in current_prices.items() %}
-                     <li class="list-group-item d-flex justify-content-between">
-                         {{ coins[key] }}:
+            <div class="card mt-5 p-3">
+                <h5 class="card-title text-primary">🪙 Current Prices</h5>
+                <ul class="list-group list-group-flush">
+                    {% for key, price in current_prices.items() %}
+                        <li class="list-group-item d-flex justify-content-between">
+                            {{ coins[key] }}:
                             <span><strong>${{ "%.2f"|format(price) }}</strong></span>
-                       </li>
-                  {% endfor %}
-             </ul>
-          </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
         {% endif %}
-
     </div>
 
     <footer>
