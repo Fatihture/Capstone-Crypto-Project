@@ -1,61 +1,71 @@
 import requests
 import pandas as pd
 import time
+from datetime import datetime, timedelta
 
-# 🎯 fetch_data için cache ayarları
+# Cache ayarları: geçmiş veri
 _data_cache = {}
 _data_fetch_times = {}
-_DATA_CACHE_DURATION = 300  # 5 dakika (saniye)
+_DATA_CACHE_DURATION = 300  # 5 dakika
 
+# Cache ayarları: güncel fiyat
+_cached_prices = {}
+_last_fetch_time = 0
+_CACHE_DURATION = 600  # 10 dakika
+
+# Coin ID dönüşüm tablosu (senin projendeki id'lerle eşleştik)
+coinpaprika_ids = {
+    "bitcoin": "btc-bitcoin",
+    "ethereum": "eth-ethereum",
+    "solana": "sol-solana",
+    "ripple": "xrp-xrp",
+    "binancecoin": "bnb-binance-coin",
+    "dogecoin": "doge-dogecoin",
+    "litecoin": "ltc-litecoin",
+    "polkadot": "dot-polkadot",
+    "chainlink": "link-chainlink",
+    "avalanche-2": "avax-avalanche"
+}
+
+# 🔁 Geçmiş fiyat verisini getir (grafik & tahmin için)
 def fetch_data(coin_id="bitcoin", days="365"):
     global _data_cache, _data_fetch_times
 
     now = time.time()
     cache_key = f"{coin_id}_{days}"
 
-    # Cache kontrolü
-    if (
-        cache_key in _data_cache and
-        now - _data_fetch_times.get(cache_key, 0) < _DATA_CACHE_DURATION
-    ):
+    if cache_key in _data_cache and now - _data_fetch_times.get(cache_key, 0) < _DATA_CACHE_DURATION:
         return _data_cache[cache_key]
 
-    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
+    if coin_id not in coinpaprika_ids:
+        raise ValueError(f"Unsupported coin ID for CoinPaprika: {coin_id}")
+
+    paprika_id = coinpaprika_ids[coin_id]
+    end_date = datetime.utcnow().date()
+    start_date = end_date - timedelta(days=int(days))
+
+    url = f"https://api.coinpaprika.com/v1/coins/{paprika_id}/ohlcv/historical"
     params = {
-        "vs_currency": "usd",
-        "days": days,
-        "interval": "daily"
+        "start": start_date.isoformat(),
+        "end": end_date.isoformat()
     }
+
     response = requests.get(url, params=params)
     data = response.json()
 
-    if "prices" not in data:
-        raise ValueError(f"Missing 'prices' in API response: {data}")
+    if not isinstance(data, list) or len(data) == 0:
+        raise ValueError(f"Invalid or empty data from CoinPaprika: {data}")
 
-    prices = data["prices"]
-    volumes = data["total_volumes"]
-    market_caps = data["market_caps"]
+    df = pd.DataFrame(data)
+    df.rename(columns={"time_open": "timestamp", "close": "price"}, inplace=True)
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df = df[["timestamp", "price", "volume", "market_cap"]]
 
-    df = pd.DataFrame({
-        "timestamp": [x[0] for x in prices],
-        "price": [x[1] for x in prices],
-        "volume": [x[1] for x in volumes],
-        "market_cap": [x[1] for x in market_caps],
-    })
-    df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
-
-    # Cache güncelle
     _data_cache[cache_key] = df
     _data_fetch_times[cache_key] = now
-
     return df
 
-
-# 🔄 Güncel fiyatlar (önceden verdiğimiz cache’li versiyon)
-_cached_prices = {}
-_last_fetch_time = 0
-_CACHE_DURATION = 600  # saniye (10 dakika)
-
+# 🔁 Güncel fiyatları getir (sayfanın alt kısmı için)
 def fetch_current_prices(coin_ids):
     global _cached_prices, _last_fetch_time
 
@@ -63,27 +73,26 @@ def fetch_current_prices(coin_ids):
     if now - _last_fetch_time < _CACHE_DURATION and _cached_prices:
         return _cached_prices
 
-    url = "https://api.coingecko.com/api/v3/simple/price"
-    params = {
-        "ids": ",".join(coin_ids),
-        "vs_currencies": "usd"
-    }
+    prices = {}
 
-    try:
-        response = requests.get(url, params=params)
-        data = response.json()
+    for coin_id in coin_ids:
+        if coin_id not in coinpaprika_ids:
+            continue
 
-        prices = {}
-        for coin_id in coin_ids:
-            price = data.get(coin_id, {}).get("usd", None)
-            if price is not None:
-                prices[coin_id] = price
+        paprika_id = coinpaprika_ids[coin_id]
+        url = f"https://api.coinpaprika.com/v1/tickers/{paprika_id}"
 
-        _cached_prices = prices
-        _last_fetch_time = now
+        try:
+            response = requests.get(url)
+            data = response.json()
+            usd_price = data.get("quotes", {}).get("USD", {}).get("price", None)
 
-        return prices
+            if usd_price is not None:
+                prices[coin_id] = usd_price
 
-    except Exception as e:
-        print(f"Error fetching prices: {e}")
-        return _cached_prices if _cached_prices else {}
+        except Exception as e:
+            print(f"Error fetching {coin_id}: {e}")
+
+    _cached_prices = prices
+    _last_fetch_time = now
+    return prices
