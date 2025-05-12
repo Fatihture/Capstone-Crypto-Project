@@ -1,33 +1,36 @@
 import requests
 import pandas as pd
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 
-# Cache ayarları: geçmiş veri
+# 🔐 CryptoCompare API KEY
+CRYPTOCOMPARE_API_KEY = "94d76d5d1459a03c3ddaee417d0cce037a65cf2bc9595c5d1faa6646b8056ef6"
+
+# 🪙 Coin eşleştirmeleri (senin arayüz ID'lerine göre)
+cc_symbols = {
+    "bitcoin": "BTC",
+    "ethereum": "ETH",
+    "solana": "SOL",
+    "ripple": "XRP",
+    "binancecoin": "BNB",
+    "dogecoin": "DOGE",
+    "litecoin": "LTC",
+    "polkadot": "DOT",
+    "chainlink": "LINK",
+    "avalanche-2": "AVAX"
+}
+
+# 🧠 Geçmiş fiyat cache
 _data_cache = {}
 _data_fetch_times = {}
 _DATA_CACHE_DURATION = 300  # 5 dakika
 
-# Cache ayarları: güncel fiyat
+# 🧠 Güncel fiyat cache
 _cached_prices = {}
 _last_fetch_time = 0
 _CACHE_DURATION = 600  # 10 dakika
 
-# Coin ID dönüşüm tablosu (senin projendeki id'lerle eşleştik)
-coinpaprika_ids = {
-    "bitcoin": "btc-bitcoin",
-    "ethereum": "eth-ethereum",
-    "solana": "sol-solana",
-    "ripple": "xrp-xrp",
-    "binancecoin": "bnb-binance-coin",
-    "dogecoin": "doge-dogecoin",
-    "litecoin": "ltc-litecoin",
-    "polkadot": "dot-polkadot",
-    "chainlink": "link-chainlink",
-    "avalanche-2": "avax-avalanche"
-}
-
-# 🔁 Geçmiş fiyat verisini getir (grafik & tahmin için)
+# 🔁 Geçmiş fiyatları getir (grafik + model için)
 def fetch_data(coin_id="bitcoin", days="365"):
     global _data_cache, _data_fetch_times
 
@@ -37,35 +40,38 @@ def fetch_data(coin_id="bitcoin", days="365"):
     if cache_key in _data_cache and now - _data_fetch_times.get(cache_key, 0) < _DATA_CACHE_DURATION:
         return _data_cache[cache_key]
 
-    if coin_id not in coinpaprika_ids:
-        raise ValueError(f"Unsupported coin ID for CoinPaprika: {coin_id}")
+    if coin_id not in cc_symbols:
+        raise ValueError(f"Unsupported coin ID: {coin_id}")
 
-    paprika_id = coinpaprika_ids[coin_id]
-    end_date = datetime.utcnow().date()
-    start_date = end_date - timedelta(days=int(days))
+    symbol = cc_symbols[coin_id]
 
-    url = f"https://api.coinpaprika.com/v1/coins/{paprika_id}/ohlcv/historical"
+    url = f"https://min-api.cryptocompare.com/data/v2/histoday"
     params = {
-        "start": start_date.isoformat(),
-        "end": end_date.isoformat()
+        "fsym": symbol,
+        "tsym": "USD",
+        "limit": int(days),
+        "api_key": CRYPTOCOMPARE_API_KEY
     }
 
     response = requests.get(url, params=params)
     data = response.json()
 
-    if not isinstance(data, list) or len(data) == 0:
-        raise ValueError(f"Invalid or empty data from CoinPaprika: {data}")
+    if data.get("Response") != "Success":
+        raise ValueError(f"Invalid API response: {data}")
 
-    df = pd.DataFrame(data)
-    df.rename(columns={"time_open": "timestamp", "close": "price"}, inplace=True)
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
-    df = df[["timestamp", "price", "volume", "market_cap"]]
+    raw = data["Data"]["Data"]
+    df = pd.DataFrame(raw)
+    df["timestamp"] = pd.to_datetime(df["time"], unit="s")
+    df.rename(columns={"close": "price"}, inplace=True)
+    df["market_cap"] = 0  # Placeholder (API sağlamıyor)
+    df = df[["timestamp", "price", "volumeto", "market_cap"]]
+    df.rename(columns={"volumeto": "volume"}, inplace=True)
 
     _data_cache[cache_key] = df
     _data_fetch_times[cache_key] = now
     return df
 
-# 🔁 Güncel fiyatları getir (sayfanın alt kısmı için)
+# 🔁 Güncel fiyatları getir (sayfa altındaki kutu için)
 def fetch_current_prices(coin_ids):
     global _cached_prices, _last_fetch_time
 
@@ -73,23 +79,21 @@ def fetch_current_prices(coin_ids):
     if now - _last_fetch_time < _CACHE_DURATION and _cached_prices:
         return _cached_prices
 
+    symbols = [cc_symbols[cid] for cid in coin_ids if cid in cc_symbols]
     prices = {}
 
-    for coin_id in coin_ids:
-        if coin_id not in coinpaprika_ids:
-            continue
-
-        paprika_id = coinpaprika_ids[coin_id]
-        url = f"https://api.coinpaprika.com/v1/tickers/{paprika_id}"
+    for symbol, coin_id in zip(symbols, coin_ids):
+        url = f"https://min-api.cryptocompare.com/data/price"
+        params = {
+            "fsym": symbol,
+            "tsyms": "USD",
+            "api_key": CRYPTOCOMPARE_API_KEY
+        }
 
         try:
-            response = requests.get(url)
+            response = requests.get(url, params=params)
             data = response.json()
-            usd_price = data.get("quotes", {}).get("USD", {}).get("price", None)
-
-            if usd_price is not None:
-                prices[coin_id] = usd_price
-
+            prices[coin_id] = data.get("USD", None)
         except Exception as e:
             print(f"Error fetching {coin_id}: {e}")
 
