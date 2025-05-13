@@ -74,6 +74,20 @@
             font-weight: 500;
             border: 1px solid #f4c430;
         }
+        .fixed-prices-panel {
+            position: absolute;
+            top: 100px;
+            right: 30px;
+            width: 250px;
+            z-index: 10;
+        }
+        @media (max-width: 991px) {
+            .fixed-prices-panel {
+                position: static;
+                width: 100%;
+                margin-top: 20px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -84,6 +98,22 @@
             </span>
         </div>
     </nav>
+
+    {% if current_prices %}
+    <div class="fixed-prices-panel">
+        <div class="card p-3">
+            <h5 class="card-title text-primary">🪙 Current Prices</h5>
+            <ul class="list-group list-group-flush">
+                {% for key, price in current_prices.items() %}
+                    <li class="list-group-item d-flex justify-content-between">
+                        {{ coins[key] }}:
+                        <span><strong>${{ "%.2f"|format(price) }}</strong></span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
 
     <div class="container">
         <form method="POST" class="card p-4 shadow-sm">
@@ -104,12 +134,6 @@
             <button type="submit" class="btn btn-primary w-100">🔮 Predict</button>
         </form>
 
-        {% if rmse_score %}
-            <div class="alert alert-info text-center mt-4">
-                📉 RMSE: {{ rmse_score }} USD
-            </div>
-        {% endif %}
-
         {% if prediction %}
             {% if prediction is string %}
                 <div class="alert alert-danger text-center mt-4">{{ prediction }}</div>
@@ -124,6 +148,27 @@
                         {% endfor %}
                     </ul>
                 </div>
+
+                {% if rmse_score is not none %}
+                <div class="card mt-3 p-3">
+                    <h6 class="text-primary mb-3">📊 Prediction Performance Metrics</h6>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            RMSE (Root Mean Square Error):
+                            <span><strong>{{ rmse_score }} USD</strong></span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            MAE (Mean Absolute Error):
+                            <span><strong>{{ mae_score }} USD</strong></span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            R² Score:
+                            <span><strong>{{ r2_score }}</strong></span>
+                        </li>
+                    </ul>
+                </div>
+                {% endif %}
+
                 {% if csv_ready %}
                     <div class="text-center mt-3">
                         <a href="/download" class="btn btn-success">⬇️ Download Predictions (CSV)</a>
@@ -155,24 +200,13 @@
         {% endif %}
 
         {% if graphJSON_pred %}
-            <div id="prediction_graph" class="mt-5"></div>
-            <script>
-                var pred_plot = {{ graphJSON_pred | safe }};
-                Plotly.newPlot('prediction_graph', pred_plot.data, pred_plot.layout, {responsive: true});
-            </script>
-        {% endif %}
-
-        {% if current_prices %}
             <div class="card mt-5 p-3">
-                <h5 class="card-title text-primary">🪙 Current Prices</h5>
-                <ul class="list-group list-group-flush">
-                    {% for key, price in current_prices.items() %}
-                        <li class="list-group-item d-flex justify-content-between">
-                            {{ coins[key] }}:
-                            <span><strong>${{ "%.2f"|format(price) }}</strong></span>
-                        </li>
-                    {% endfor %}
-                </ul>
+                <h5 class="card-title text-primary">📈 Forecast Plot</h5>
+                <div id="prediction_graph"></div>
+                <script>
+                    var pred_plot = {{ graphJSON_pred | safe }};
+                    Plotly.newPlot('prediction_graph', pred_plot.data, pred_plot.layout, {responsive: true});
+                </script>
             </div>
         {% endif %}
     </div>
