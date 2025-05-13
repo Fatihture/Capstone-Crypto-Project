@@ -153,21 +153,18 @@
                 <div class="card mt-3 p-3">
                     <h6 class="text-primary mb-3">📊 Prediction Performance Metrics</h6>
                     <ul class="list-group list-group-flush">
-                        <li class="list-group-item d-flex justify-content-between">
-                            RMSE (Root Mean Square Error):
-                            <span><strong>{{ rmse_score }} USD</strong></span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            MAE (Mean Absolute Error):
-                            <span><strong>{{ mae_score }} USD</strong></span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            R² Score:
-                            <span><strong>{{ r2_score }}</strong></span>
-                        </li>
+                      <li class="list-group-item d-flex justify-content-between">
+                        RMSE (Root Mean Square Error):
+                        <span><strong>{{ rmse_score }} USD</strong></span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between">
+                          MAE (Mean Absolute Error):
+                         <span><strong>{{ mae_score }} USD</strong></span>
+                      </li>
                     </ul>
                 </div>
                 {% endif %}
+
 
                 {% if csv_ready %}
                     <div class="text-center mt-3">

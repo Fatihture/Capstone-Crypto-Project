@@ -9,7 +9,7 @@ from utils.preprocess_data import preprocess_data
 import plotly.graph_objs as go
 import plotly
 import json
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 app = Flask(__name__)
 
@@ -36,7 +36,6 @@ def index():
     csv_ready = False
     rmse_score = None
     mae_score = None
-    r2_score_val = None
     current_prices = fetch_current_prices(list(COINS.keys()))
     past_prices = []
     original_df = None
@@ -79,14 +78,13 @@ def index():
             csv_df.to_csv("predictions.csv", index=False)
             csv_ready = True
 
-            # RMSE, MAE, R² Score
+            # RMSE & MAE
             last_15_X = X[-15:]
             real_15 = scaler.inverse_transform(y[-15:])
             predicted_15 = scaler.inverse_transform(model.predict(last_15_X, verbose=0))
 
             rmse_score = round(np.sqrt(mean_squared_error(real_15, predicted_15)), 2)
             mae_score = round(mean_absolute_error(real_15, predicted_15), 2)
-            r2_score_val = round(r2_score(real_15, predicted_15), 4)
 
             # Grafik - Tahmin
             fig_pred = go.Figure()
@@ -123,7 +121,6 @@ def index():
         csv_ready=csv_ready,
         rmse_score=rmse_score,
         mae_score=mae_score,
-        r2_score=r2_score_val,
         current_prices=current_prices,
         past_prices=past_prices
     )
