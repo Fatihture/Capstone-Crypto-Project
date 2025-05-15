@@ -1,12 +1,11 @@
 import os
 import joblib
 import numpy as np
-import pandas as pd
-import requests
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
-from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.callbacks import EarlyStopping
+from sklearn.preprocessing import MinMaxScaler
+from utils.fetch_data import fetch_data  # ← ✅ Yeni sistemden çekiyoruz
 
 model_dir = "model"
 os.makedirs(model_dir, exist_ok=True)
@@ -15,21 +14,6 @@ coins = [
     "bitcoin", "ethereum", "solana", "ripple", "binancecoin",
     "dogecoin", "litecoin", "polkadot", "chainlink", "avalanche-2"
 ]
-
-def fetch_data(coin_id="bitcoin", days="365"):
-    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
-    params = {
-        "vs_currency": "usd",
-        "days": days,
-        "interval": "daily"
-    }
-    response = requests.get(url, params=params)
-    data = response.json()
-    if 'prices' not in data:
-        raise ValueError(f"API error: {data}")
-    df = pd.DataFrame(data["prices"], columns=["timestamp", "price"])
-    df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
-    return df
 
 def preprocess_data(df):
     scaler = MinMaxScaler()
@@ -57,7 +41,7 @@ for coin in coins:
 
     try:
         print(f"▶ Training model for: {coin}")
-        df = fetch_data(coin)
+        df = fetch_data(coin, days=365)  # ✅ Yeni fetch_data fonksiyonu
         X, y, scaler = preprocess_data(df)
         model = build_model((X.shape[1], X.shape[2]))
         es = EarlyStopping(patience=3, restore_best_weights=True)
