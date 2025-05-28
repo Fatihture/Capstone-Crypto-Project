@@ -5,7 +5,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 from tensorflow.keras.callbacks import EarlyStopping
 from sklearn.preprocessing import MinMaxScaler
-from utils.fetch_data import fetch_data  # ← ✅ Yeni sistemden çekiyoruz
+from utils.fetch_data import fetch_data  
 
 model_dir = "model"
 os.makedirs(model_dir, exist_ok=True)
@@ -41,7 +41,7 @@ for coin in coins:
 
     try:
         print(f"▶ Training model for: {coin}")
-        df = fetch_data(coin, days=365)  # ✅ Yeni fetch_data fonksiyonu
+        df = fetch_data(coin, days=365)  
         X, y, scaler = preprocess_data(df)
         model = build_model((X.shape[1], X.shape[2]))
         es = EarlyStopping(patience=3, restore_best_weights=True)

@@ -3,7 +3,6 @@ import pandas as pd
 import time
 from datetime import datetime
 
-# CryptoCompare API key
 CRYPTOCOMPARE_API_KEY = "94d76d5d1459a03c3ddaee417d0cce037a65cf2bc9595c5d1faa6646b8056ef6"
 
 # Coin eşleşmeleri
@@ -20,7 +19,7 @@ cc_symbols = {
     "avalanche-2": "AVAX"
 }
 
-# Geçmiş veri cache
+# cache
 _data_cache = {}
 _data_fetch_times = {}
 _DATA_CACHE_DURATION = 300  # saniye
@@ -30,7 +29,7 @@ _cached_prices = {}
 _last_fetch_time = 0
 _CACHE_DURATION = 600  # saniye
 
-# 🔁 Geçmiş fiyat verisi (tahmin ve grafik için)
+#  Geçmiş fiyat verisi
 def fetch_data(coin_id="bitcoin", days="365"):
     global _data_cache, _data_fetch_times
 
@@ -71,7 +70,7 @@ def fetch_data(coin_id="bitcoin", days="365"):
     _data_fetch_times[cache_key] = now
     return df
 
-# 🔁 Güncel fiyat verisi (sayfanın altı için)
+#  Güncel fiyat verisi
 def fetch_current_prices(coin_ids):
     global _cached_prices, _last_fetch_time
 
